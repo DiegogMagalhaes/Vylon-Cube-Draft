@@ -1,6 +1,6 @@
 import { normRar } from './utils.js';
 // Importação de CSV: colunas id, name, type, qty, rarity (rarity: c, r, sr, ur)
-export function parseCsv(t){const l=t.split('\n')[0],d=l.split(';').length>l.split(',').length?';':',',rows=[];let r=[],f='',q=false;
+export function parseCsv(t){t=t.replace(/^\uFEFF/,'');const l=t.split('\n')[0],d=l.split(';').length>l.split(',').length?';':',',rows=[];let r=[],f='',q=false;
 for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'&&t[i+1]=='"'){f+='"';i++}else if(ch=='"')q=false;else f+=ch}
 else if(ch=='"')q=true;else if(ch==d){r.push(f);f=''}
 else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(f);f='';if(r.some(x=>x.trim()))rows.push(r);r=[]}else f+=ch}

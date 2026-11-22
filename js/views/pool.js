@@ -10,7 +10,7 @@ export async function poolView(){const{data:cubes}=await sb.from('cubes').select
 app.innerHTML=`<div class=box><h3>Importar cubo</h3><div class=row><input id=cn placeholder="Nome do cubo"><input id=cf type=file accept=".csv,.txt"></div><p class=mu>Envie um CSV (colunas: <code>id, name, rarity, qty</code> — só id <i>ou</i> name já basta) ou cole uma lista <code>ydke://…</code>.</p><textarea id=ct placeholder="Cole CSV ou ydke:// aqui"></textarea><p><button id=im>Importar</button> <span id=ms class=mu></span></p></div>
 <div class=box><h3>Meus cubos</h3>${(cubes||[]).map(c=>`<div class=row style="padding:6px 0"><b>${esc(c.name)}</b><span class=mu>${c.cards.length} cartas</span><span style="flex:1"></span><button class=g data-o="${c.id}">Abrir / raridades</button><button class=d data-x="${c.id}">Excluir</button></div>`).join('')||'<span class=mu>Nenhum cubo ainda.</span>'}</div><div id=ed></div>`;
 $('#im').onclick=async()=>{const ms=t=>$('#ms').textContent=t;try{let t=$('#ct').value;const f=$('#cf').files[0];if(f)t=await f.text();if(!t.trim())return ms('Nada para importar.');
-let cs=/^\s*ydke:\/\//i.test(t)?fromYdke(t):rowsToCards(parseCsv(t));cs=await enrich(cs,ms);if(!cs.length)return ms('Nenhuma carta reconhecida.');
+let cs=/^\s*ydke:\/\//i.test(t)?fromYdke(t):rowsToCards(parseCsv(t));const rs=[...new Set(cs.map(c=>c.r))];if(rs.length>12)return ms(`Importação cancelada: ${rs.length} raridades diferentes (${rs.slice(0,3).join(', ')}…). A coluna rarity deve conter c, r, sr ou ur. Confira a ordem: id, name, type, qty, rarity.`);cs=await enrich(cs,ms);if(!cs.length)return ms('Nenhuma carta reconhecida.');
 const{error}=await sb.from('cubes').insert({name:$('#cn').value||'Cubo sem nome',cards:cs});if(error)return ms(error.message);poolView()}catch(e){ms('Erro: '+e.message)}};
 app.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{if(confirm('Excluir cubo?')){await sb.from('cubes').delete().eq('id',b.dataset.x);poolView()}});
 app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>editor(cubes.find(c=>c.id==b.dataset.o)))}
@@ -23,4 +23,3 @@ $('#nr').onclick=()=>{const n=prompt('Nome da raridade:');if(n){rs.push(n);draw(
 $('#yd').onclick=()=>copy(toYdke(cube.cards));
 $('#sv').onclick=async()=>{const{error}=await sb.from('cubes').update({cards:cube.cards}).eq('id',cube.id);$('#ms2').textContent=error?error.message:'Salvo ✓'}};
 draw();$('#ed').scrollIntoView()}
-
