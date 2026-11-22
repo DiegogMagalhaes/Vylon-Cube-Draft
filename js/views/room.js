@@ -1,7 +1,7 @@
 import { $, app, esc, cardEl, copy, download, shuffle, normRar, RAR, RC } from '../utils.js';
 import { sb } from '../supabase.js';
 import { state, uname } from '../auth.js';
-import { toYdke, toYdk } from '../ydke.js';
+import { deckToYdke, deckToYdk } from '../ydke.js';
 
 // ---------- Sala / draft em tempo real ----------
 export async function roomView(code){code=(code||'').toUpperCase();
@@ -39,30 +39,45 @@ async function saveDraft(me){
   saveErr=!!error&&error.code!=='23505'; // 23505 = já estava salvo
   saveMsg=saveErr?'Erro ao salvar: '+error.message:'Salvo no histórico ✓';
   paint()}
-// ----- tabuleiro livre: cartas escolhidas arrastáveis (posição salva no navegador) -----
-const key='board:'+room.id;let pos={};try{pos=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
-const BW=96,BH=140,G=10,ORD=['UR','SR','R','C'];let drag=null,zi=1,mine={picks:[]};
-app.innerHTML=`<div id=info></div><div id=stage></div><div class=box><div class=row><h3 id=bt style="margin:0">Seu deck</h3><span style="flex:1"></span><button class=g id=b1>Organizar</button><button class=g id=b2>Por raridade</button><button class=g id=b3>Copiar YDKE</button><button id=b4>Baixar YDKE</button><button class=g id=b5>Baixar .ydk</button></div><p class=mu>Arraste as cartas e posicione como quiser. A posição fica salva neste navegador.</p><div id=board class=board></div></div>`;
-const board=$('#board'),cardsEl=()=>[...board.children];
-const slot=(i,cols)=>[G+(i%cols)*(BW+G),G+Math.floor(i/cols)*(BH+G)];
-const colsN=()=>Math.max(1,Math.floor((board.clientWidth-G)/(BW+G)));
-function layout(){cardsEl().forEach(d=>{const p=pos[d.dataset.k];if(p){d.style.left=p[0]+'px';d.style.top=p[1]+'px'}});
-  board.style.height=Math.max(440,...cardsEl().map(d=>d.offsetTop+BH+G))+'px';try{localStorage.setItem(key,JSON.stringify(pos))}catch(e){}}
-function arrange(order){order.forEach((k,i)=>pos[k]=slot(i,colsN()));layout()}
-function renderBoard(){const n=mine.picks.length;
-  for(let k=board.children.length;k<n;k++){board.insertAdjacentHTML('beforeend',cardEl(mine.picks[k],'bc',`data-k=${k}`));
-    if(!pos[k]){let i=0;while(Object.values(pos).some(p=>p[0]==slot(i,colsN())[0]&&p[1]==slot(i,colsN())[1]))i++;pos[k]=slot(i,colsN())}}
-  $('#bt').textContent=`Seu deck (${n})`;layout()}
-$('#b1').onclick=()=>{pos={};arrange(cardsEl().map(d=>+d.dataset.k))};
-$('#b2').onclick=()=>{const r=k=>{const i=ORD.indexOf(normRar(mine.picks[k].r));return i<0?9:i};arrange(cardsEl().map(d=>+d.dataset.k).sort((a,b)=>r(a)-r(b)||mine.picks[a].n.localeCompare(mine.picks[b].n)))};
-$('#b3').onclick=()=>copy(toYdke(mine.picks));
-$('#b4').onclick=()=>download(`draft-${room.code}.ydke.txt`,toYdke(mine.picks));
-$('#b5').onclick=()=>download(`draft-${room.code}.ydk`,toYdk(mine.picks));
-board.onpointerdown=e=>{const d=e.target.closest('.bc');if(!d)return;const r=board.getBoundingClientRect();
-  drag={d,ox:e.clientX-r.left-d.offsetLeft,oy:e.clientY-r.top-d.offsetTop};d.setPointerCapture(e.pointerId);d.style.zIndex=++zi;d.classList.add('drag');e.preventDefault()};
-board.onpointermove=e=>{if(!drag)return;const r=board.getBoundingClientRect();
-  drag.d.style.left=Math.min(Math.max(0,e.clientX-r.left-drag.ox),board.clientWidth-BW)+'px';drag.d.style.top=Math.max(0,e.clientY-r.top-drag.oy)+'px'};
-board.onpointerup=board.onpointercancel=()=>{if(!drag)return;pos[drag.d.dataset.k]=[drag.d.offsetLeft,drag.d.offsetTop];drag.d.classList.remove('drag');drag=null;layout()};
+// ----- deckbuilder em tiles: Main / Extra / Side (arraste para reordenar ou mover) -----
+const key='deck:'+room.id,SEC=['main','extra','side'],TITLE={main:'Main Deck',extra:'Extra Deck',side:'Side Deck'},MIN={main:40,extra:15,side:15},STEP={main:10,extra:15,side:15},ORD=['UR','SR','R','C'];
+let L={main:[],extra:[],side:[]},mine={picks:[]},drag=null;
+try{L={...L,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(e){}
+const save=()=>{try{localStorage.setItem(key,JSON.stringify(L))}catch(e){}};
+app.innerHTML=`<div id=info></div><div id=stage></div><div class=box><div class=row><h3 id=bt style="margin:0">Seu deck</h3><span style="flex:1"></span><button class=g id=b1>Ordenar por tipo</button><button class=g id=b2>Por raridade</button><button class=g id=b6>Reiniciar</button><button class=g id=b3>Copiar YDKE</button><button id=b4>Baixar YDKE</button><button class=g id=b5>Baixar .ydk</button></div><p class=mu>Arraste as cartas para reordenar ou mover entre Main, Extra e Side. A organização fica salva neste navegador.</p><div id=deck></div></div>`;
+const deck=$('#deck'),secCards=x=>L[x].map(k=>mine.picks[k]);
+function sync(){const n=mine.picks.length,seen=new Set();
+  for(const x of SEC)L[x]=(Array.isArray(L[x])?L[x]:[]).filter(k=>k<n&&!seen.has(k)&&seen.add(k));
+  for(let k=0;k<n;k++)if(!seen.has(k))L[mine.picks[k].x?'extra':'main'].push(k)}
+const bad=(x,n)=>x=='main'?(n<40||n>60):n>15;
+function renderDeck(){if(drag)return;sync();
+  deck.innerHTML=SEC.map(x=>{const a=L[x],n=a.length,tot=Math.max(MIN[x],Math.ceil((n+1)/STEP[x])*STEP[x]);
+    return `<div class=sec><h3>${TITLE[x]} <span class="cnt ${bad(x,n)?'warn':''}">${n}${x=='main'?' (40–60)':' / 15'}</span></h3><div class="dg dg-${x}" data-s=${x}>${Array.from({length:tot},(_,i)=>`<div class=slot data-s=${x} data-i=${i}>${i<n?cardEl(mine.picks[a[i]],'tc',`data-k=${a[i]}`):''}</div>`).join('')}</div></div>`}).join('');
+  $('#bt').textContent=`Seu deck (${mine.picks.length} cartas)`}
+const trank=c=>/spell/i.test(c.t||'')?1:/trap/i.test(c.t||'')?2:/monster/i.test(c.t||'')?0:3;
+const rrank=c=>{const i=ORD.indexOf(normRar(c.r));return i<0?9:i};
+const sortBy=f=>{for(const x of SEC)L[x].sort((a,b)=>f(mine.picks[a],mine.picks[b])||mine.picks[a].n.localeCompare(mine.picks[b].n));save();renderDeck()};
+$('#b1').onclick=()=>sortBy((a,b)=>trank(a)-trank(b));
+$('#b2').onclick=()=>sortBy((a,b)=>rrank(a)-rrank(b));
+$('#b6').onclick=()=>{L={main:[],extra:[],side:[]};save();renderDeck()};
+$('#b3').onclick=()=>copy(deckToYdke(secCards('main'),secCards('extra'),secCards('side')));
+$('#b4').onclick=()=>download(`draft-${room.code}.ydke.txt`,deckToYdke(secCards('main'),secCards('extra'),secCards('side')));
+$('#b5').onclick=()=>download(`draft-${room.code}.ydk`,deckToYdk(secCards('main'),secCards('extra'),secCards('side')));
+// arrastar e soltar por ponteiro (mouse e toque): a carta encaixa no tile sob o cursor
+function target(e){const el=document.elementFromPoint(e.clientX,e.clientY),sl=el?.closest('.slot'),g=el?.closest('.dg');
+  return sl?{s:sl.dataset.s,i:+sl.dataset.i,el:sl}:g?{s:g.dataset.s,i:1e9}:null}
+function mv(e){if(!drag)return;
+  if(!drag.on){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;drag.on=true;
+    const g=drag.c.cloneNode(true);g.classList.add('ghost');g.style.width=drag.c.offsetWidth+'px';document.body.appendChild(g);drag.g=g;drag.c.style.opacity='.25'}
+  drag.g.style.left=e.clientX-drag.g.offsetWidth/2+'px';drag.g.style.top=e.clientY-drag.g.offsetHeight/2+'px';
+  deck.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));target(e)?.el?.classList.add('over')}
+function up(e){removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
+  const d=drag;drag=null;if(!d||!d.on)return;d.g.remove();const t=target(e);
+  if(t){for(const x of SEC){const j=L[x].indexOf(d.k);if(j>=0)L[x].splice(j,1)}L[t.s].splice(Math.min(t.i,L[t.s].length),0,d.k);save()}
+  renderDeck()}
+deck.onpointerdown=e=>{const c=e.target.closest('.tc');if(!c||e.button)return;e.preventDefault();
+  drag={c,k:+c.dataset.k,x:e.clientX,y:e.clientY,on:false};
+  addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up)};
 
 function paint(){if(!$('#info'))return;
 const me=players.find(p=>p.user_id==state.user.id),host=room.host==state.user.id,s=room.settings,drafting=room.status=='drafting';
@@ -80,7 +95,7 @@ $('#cp').onclick=()=>copy(location.href);
 if($('#st'))$('#st').onclick=start;
 if($('#rt'))$('#rt').onclick=()=>saveDraft(me);
 app.querySelectorAll('.pk').forEach(el=>el.onclick=()=>sb.from('room_players').update({chosen:+el.dataset.k}).eq('id',me.id).then(sched));
-renderBoard();
+renderDeck();
 if(room.status=='done'&&me&&!saved){saved=true;saveDraft(me)}
 if(drafting&&host&&players.every(p=>p.chosen!=null))advance().then(sched)}
 paint();return()=>sb.removeChannel(ch)}
