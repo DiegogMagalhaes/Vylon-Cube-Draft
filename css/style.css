@@ -285,18 +285,6 @@ button.d,
   color: #1a1204;
   background: var(--gold);
 }
-#zoom {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  width: 280px;
-  display: none;
-  border: 2px solid var(--gold);
-  border-radius: 8px;
-  box-shadow: 0 0 30px #000;
-  z-index: 9;
-  pointer-events: none;
-}
 /* deckbuilder em tiles */
 .sec {
   margin-bottom: 18px;
