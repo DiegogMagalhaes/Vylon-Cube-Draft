@@ -35,8 +35,17 @@ export const esc = (s) =>
   );
 export const img = (i, big) =>
   `https://images.ygoprodeck.com/images/cards${big ? '' : '_small'}/${i}.jpg`;
-export const cardEl = (c, x = '', a = '') =>
-  `<div class="c r-${normRar(c.r)} ${x}" ${a} data-i="${c.i}" style="border-color:${RC[normRar(c.r)] || '#666'}"><img loading="lazy" src="${img(c.i)}" alt="${esc(c.n)}" title="${esc(c.n)}${c.t ? ' · ' + esc(c.t) : ''}"><small>${esc(c.r)}</small></div>`;
+// HTML de uma carta. `extra` = classes CSS extras; `attrs` = atributos extras (ex.: data-k="3").
+// Os data-* alimentam o zoom (zoom.js).
+export const cardEl = (c, extra = '', attrs = '') => {
+  const rarity = normRar(c.r);
+  const data = `data-i="${c.i}" data-n="${esc(c.n)}" data-t="${esc(c.t || '')}" data-r="${esc(c.r)}"`;
+  return `
+    <div class="c r-${rarity} ${extra}" ${attrs} ${data} style="border-color:${RC[rarity] || '#666'}">
+      <img loading="lazy" src="${img(c.i)}" alt="${esc(c.n)}">
+      <small>${esc(c.r)}</small>
+    </div>`;
+};
 export const shuffle = (a) => {
   for (let i = a.length - 1; i > 0; i--) {
     const j = (Math.random() * (i + 1)) | 0;
@@ -52,13 +61,3 @@ export const download = (name, text) => {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 export const copy = (t) => navigator.clipboard.writeText(t).then(() => alert('Copiado!'));
-
-// pré-visualização grande da carta ao passar o mouse
-document.addEventListener('mouseover', (e) => {
-  const c = e.target.closest('.c'),
-    z = $('#zoom');
-  if (c) {
-    z.src = img(c.dataset.i, 1);
-    z.style.display = 'block';
-  } else z.style.display = 'none';
-});

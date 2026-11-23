@@ -25,7 +25,7 @@ export const fromYdke = (s) =>
 export const deckToYdke = (m, e, s) =>
   `ydke://${b64(m.map((c) => c.i))}!${b64(e.map((c) => c.i))}!${b64(s.map((c) => c.i))}!`;
 export const deckToYdk = (m, e, s) =>
-  '#created by YGO Cube Draft\n#main\n' +
+  '#created by Vylon Cube Draft\n#main\n' +
   m.map((c) => c.i).join('\n') +
   '\n#extra\n' +
   e.map((c) => c.i).join('\n') +

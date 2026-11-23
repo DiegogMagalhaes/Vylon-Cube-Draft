@@ -16,18 +16,22 @@ export async function initAuth(onChange) {
   });
 }
 
-export function renderNav(on) {
-  $('#nav').innerHTML = state.user
-    ? [
-        ['play', 'Jogar'],
-        ['pool', 'Pool'],
-        ['history', 'Histórico'],
-      ]
-        .map(([k, t]) => `<a href="#/${k}" class="${on == k ? 'on' : ''}">${t}</a>`)
-        .join('') +
-      `<span style="flex:1"></span><span class=mu>${esc(uname())}</span><button class=g id=lo>Sair</button>`
-    : '';
-  if (state.user) $('#lo').onclick = () => sb.auth.signOut();
+export function renderNav(page) {
+  const link = (hash, label) =>
+    `<a href="#/${hash}" class="${page === hash ? 'on' : ''}">${label}</a>`;
+  const spacer = '<span style="flex:1"></span>';
+
+  if (!state.user) {
+    $('#nav').innerHTML = spacer + link('login', 'Entrar');
+    return;
+  }
+  $('#nav').innerHTML =
+    link('play', 'Jogar') +
+    link('pool', 'Pool') +
+    link('history', 'Histórico') +
+    spacer +
+    `<span class="mu">${esc(uname())}</span><button class="g" id="logout">Sair</button>`;
+  $('#logout').onclick = () => sb.auth.signOut();
 }
 
 export function authView() {

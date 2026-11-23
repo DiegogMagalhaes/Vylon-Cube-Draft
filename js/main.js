@@ -1,11 +1,21 @@
 // Ponto de entrada: roteador por hash (#/play, #/pool, #/history, #/room/CODIGO).
+import './zoom.js';
 import { state, initAuth, renderNav, authView } from './auth.js';
 import { playView } from './views/play.js';
 import { poolView } from './views/pool.js';
 import { historyView } from './views/history.js';
+import { homeView } from './views/home.js';
 import { roomView } from './views/room/index.js';
 
-const routes = { pool: poolView, history: historyView, room: (p) => roomView(p[1]) };
+const routes = {
+  '': homeView,
+  home: homeView,
+  play: playView,
+  pool: poolView,
+  history: historyView,
+  room: (p) => roomView(p[1]),
+};
+const PUBLIC_PAGES = new Set(['', 'home']); // as demais exigem login
 let cleanup = null,
   rid = 0;
 
@@ -16,9 +26,16 @@ async function route() {
     cleanup = null;
   }
   const p = location.hash.slice(2).split('/');
-  renderNav(p[0]);
-  if (!state.user) return authView();
-  const c = await (routes[p[0]] || playView)(p);
+  const page = p[0];
+  renderNav(page);
+
+  if (page === 'login' && state.user) {
+    location.hash = '#/play'; // já logado: o hashchange chama route() de novo
+    return;
+  }
+  if (page === 'login' || (!state.user && !PUBLIC_PAGES.has(page))) return authView();
+
+  const c = await (routes[page] || homeView)(p);
   if (id !== rid) c?.();
   else cleanup = c || null; // se mudou de rota no meio, encerra
 }
