@@ -1,5 +1,5 @@
 // Tela da sala: lobby, escolha de cartas em tempo real e deck final.
-import { app, esc, cardEl, copy } from '../../utils.js';
+import { $, app, esc, cardEl, copy } from '../../utils.js';
 import { sb } from '../../supabase.js';
 import { state, uname } from '../../auth.js';
 import { fetchPlayers, startDraft, advanceDraft } from './draft.js';

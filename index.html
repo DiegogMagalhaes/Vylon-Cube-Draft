@@ -3,15 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>YGO Cube Draft</title>
+    <title>Vylon Cube Draft</title>
+    <link rel="icon" href="assets/favicon.png" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
     <header>
-      <b>🃏 YGO Cube Draft</b><span id="nav" class="row" style="flex: 1; gap: 16px"></span>
+      <a class="brand" href="#/"
+        ><img src="assets/logo.jpg" alt="" /><span>Vylon Cube Draft</span></a
+      ><span id="nav" class="row" style="flex: 1; gap: 16px"></span>
     </header>
     <main id="app"></main>
     <img id="zoom" alt="" />
+    <script>
+      // Se um arquivo falhar ao carregar, mostra o aviso na tela em vez de deixá-la vazia.
+      function showLoadError(detail) {
+        const app = document.getElementById("app");
+        if (app.innerHTML.trim()) return; // a tela já tem conteúdo: não mexe
+        app.innerHTML =
+          '<div class="box"><h3>Erro ao carregar o site</h3>' +
+          '<p class="mu">' +
+          detail +
+          "</p>" +
+          '<p class="mu">Confira se todos os arquivos foram enviados ao GitHub e use Ctrl+F5. ' +
+          "Detalhes: aperte F12 e abra a aba Console.</p></div>";
+      }
+      addEventListener(
+        "error",
+        (e) => showLoadError(e.message || "Falha ao carregar um arquivo do site."),
+        true,
+      );
+      addEventListener("unhandledrejection", (e) =>
+        showLoadError(String(e.reason?.message || e.reason)),
+      );
+    </script>
     <script type="module" src="js/main.js"></script>
   </body>
 </html>

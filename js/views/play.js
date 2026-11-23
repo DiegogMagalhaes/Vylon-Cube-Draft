@@ -1,4 +1,4 @@
-import { app, esc } from '../utils.js';
+import { $, app, esc } from '../utils.js';
 import { sb } from '../supabase.js';
 import { state, uname } from '../auth.js';
 

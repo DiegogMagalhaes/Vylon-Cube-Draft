@@ -1,6 +1,6 @@
 // Sessão do usuário, menu de navegação e tela de login/cadastro.
 import { sb } from './supabase.js';
-import { app, esc } from './utils.js';
+import { $, app, esc } from './utils.js';
 
 export const state = { user: null };
 export const uname = () => state.user.user_metadata?.username || state.user.email.split('@')[0];

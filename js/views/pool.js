@@ -1,4 +1,4 @@
-import { app, esc, cardEl, copy, RAR, RC } from '../utils.js';
+import { $, app, esc, cardEl, copy, RAR, RC } from '../utils.js';
 import { sb } from '../supabase.js';
 
 import { parseCsv, rowsToCards } from '../csv.js';
